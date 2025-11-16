@@ -75,9 +75,8 @@ jobs:
           echo "Adding branch protection rule: $RULESET_NAME"
 
           # Comprobar si el ruleset ya existe
-          EXISTS=$(gh api -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" /repos/$REPO/rulesets --jq ".rulesets[] | select(.name==\"$RULESET_NAME\") | .name")
-
-          if [ -n "$EXISTS" ]; then
+          if gh api -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" /repos/$REPO/rulesets \
+            --jq ".rulesets[] | select(.name==\"$RULESET_NAME\")" >/dev/null; then
             echo "✅ Branch protection rule '$RULESET_NAME' already exists, skipping creation."
           else
             cat <<EOF | gh api -X POST \
