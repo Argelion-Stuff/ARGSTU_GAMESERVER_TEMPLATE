@@ -1,4 +1,4 @@
-name: Add Game Server Topics
+name: Initialize Game Server Repository
 run-name: "Initialize Game Server Repository - ${{ github.repository }}"
 
 on:
@@ -9,12 +9,11 @@ on:
 jobs:
   add-topics:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🔐 Generate GitHub App Installation Token (GitHub official action)
+      # 🔐 Generate GitHub App Installation Token
       - name: Generate GitHub App Installation Token
         id: app_token
         uses: actions/create-github-app-token@v2
@@ -22,31 +21,50 @@ jobs:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
-      # ⚙️ Authenticate GH CLI with the GitHub App token
       - name: Configure GH CLI
         run: |
           echo "${{ steps.app_token.outputs.token }}" | gh auth login --with-token
 
-      # 🏷️ Add Topics via GitHub API
       - name: Add repository topics
-        id: add_topics
         env:
           REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           echo "Adding topics: server, game"
-
           # Obtener topics actuales
           CURRENT_TOPICS=$(gh api /repos/$REPO/topics --jq '.names')
-
-          # Combinar con los nuevos topics y crear JSON
+          # Combinar con nuevos topics
           JSON_PAYLOAD=$(jq -n --argjson cur "$CURRENT_TOPICS" '{"names": ($cur + ["server","game"] | unique)}')
+          # Actualizar topics
+          echo "$JSON_PAYLOAD" | gh api -X PUT -H "Accept: application/vnd.github+json" /repos/$REPO/topics --input -
 
-          # Usar la API con input desde stdin
-          echo "$JSON_PAYLOAD" | gh api \
-            -X PUT \
-            -H "Accept: application/vnd.github+json" \
-            /repos/$REPO/topics \
-            --input -
+      - name: Summary Report
+        run: |
+          {
+            echo "### 🏷️ Repository Topics Summary"
+            echo ""
+            echo "**Repository:** \`$GITHUB_REPOSITORY\`"
+            echo "- Topics added: \`server\`, \`game\`"
+            echo "🔐 Authentication: GitHub App"
+            echo "🎉 Topics initialization complete!"
+          } >> $GITHUB_STEP_SUMMARY
+
+  branch-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate GitHub App Installation Token
+        id: app_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+
+      - name: Configure GH CLI
+        run: |
+          echo "${{ steps.app_token.outputs.token }}" | gh auth login --with-token
 
       - name: Add Branch Protection Rule
         env:
@@ -54,7 +72,6 @@ jobs:
           TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
           echo "Adding branch protection rule: ARGSTU Protection Branch"
-
           cat <<EOF | gh api -X POST \
             -H "Authorization: token $TOKEN" \
             -H "Accept: application/vnd.github+json" \
@@ -93,27 +110,15 @@ jobs:
             "bypass_actors": []
           }
           EOF
-
           echo "✅ Branch protection rule 'ARGSTU Protection Branch' added."
 
       - name: Summary Report
         run: |
           {
-            echo "### 🏷️ Repository Initialization Summary"
+            echo "### 🛡️ Branch Protection Summary"
             echo ""
             echo "**Repository:** \`$GITHUB_REPOSITORY\`"
-            echo ""
-            echo "The following topics were ensured to exist:"
-            echo "- \`server\`"
-            echo "- \`game\`"
-            echo ""
-            echo "Branch Protection Rule added:"
-            echo "- \`ARGSTU Protection Branch\` ✅"
-            echo ""
-            echo "🔐 Authentication method: GitHub App"
-            echo ""
-            echo "🎉 Initialization complete!"
-            echo ""
-            echo "📌 Notes:"
-            echo "- Topics and branch protection rule applied automatically via workflow"
+            echo "- Branch Protection Rule added: \`ARGSTU Protection Branch\`"
+            echo "🔐 Authentication: GitHub App"
+            echo "🎉 Branch protection setup complete!"
           } >> $GITHUB_STEP_SUMMARY
