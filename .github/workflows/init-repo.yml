@@ -80,10 +80,10 @@ jobs:
             echo "✅ Branch protection rule '$RULESET_NAME' already exists, skipping creation."
           else
             cat <<EOF | gh api -X POST \
-              -H "Authorization: token $TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              /repos/$REPO/rulesets \
-              --input -
+            -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            /repos/$REPO/rulesets \
+            --input -
             {
               "name": "$RULESET_NAME",
               "target": "branch",
