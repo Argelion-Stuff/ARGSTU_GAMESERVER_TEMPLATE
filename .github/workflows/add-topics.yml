@@ -47,11 +47,54 @@ jobs:
             /repos/$REPO/topics \
             --input -
 
-      # 📊 Summary
+      - name: Add Branch Protection Rule
+        env:
+          REPO: ${{ github.repository }}
+          TOKEN: ${{ steps.app_token.outputs.token }}
+        run: |
+          echo "Adding branch protection rule: ARGSTU Protection Branch"
+
+          gh api -X POST \
+            -H "Authorization: token $TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            /repos/$REPO/rulesets \
+            -f name="ARGSTU Protection Branch" \
+            -f target="branch" \
+            -f source_type="Repository" \
+            -f source="Argelion-Stuff/.github" \
+            -f enforcement="active" \
+            -F conditions='{
+              "ref_name": {
+                "include": ["~DEFAULT_BRANCH"],
+                "exclude": []
+              }
+            }' \
+            -F rules='[
+              { "type": "deletion" },
+              { "type": "non_fast_forward" },
+              { "type": "creation" },
+              {
+                "type": "pull_request",
+                "parameters": {
+                  "required_approving_review_count": 1,
+                  "dismiss_stale_reviews_on_push": true,
+                  "required_reviewers": [],
+                  "require_code_owner_review": true,
+                  "require_last_push_approval": true,
+                  "required_review_thread_resolution": true,
+                  "automatic_copilot_code_review_enabled": true,
+                  "allowed_merge_methods": ["merge","squash","rebase"]
+                }
+              }
+            ]' \
+            -F bypass_actors='[]'
+
+          echo "✅ Branch protection rule 'ARGSTU Protection Branch' added."
+
       - name: Summary Report
         run: |
           {
-            echo "### 🏷️ Topics Added Successfully"
+            echo "### 🏷️ Repository Initialization Summary"
             echo ""
             echo "**Repository:** \`$GITHUB_REPOSITORY\`"
             echo ""
@@ -59,6 +102,13 @@ jobs:
             echo "- \`server\`"
             echo "- \`game\`"
             echo ""
+            echo "Branch Protection Rule added:"
+            echo "- \`ARGSTU Protection Branch\` ✅"
+            echo ""
             echo "🔐 Authentication method: GitHub App"
+            echo ""
             echo "🎉 Initialization complete!"
+            echo ""
+            echo "📌 Notes:"
+            echo "- Topics and branch protection rule applied automatically via workflow"
           } >> $GITHUB_STEP_SUMMARY
