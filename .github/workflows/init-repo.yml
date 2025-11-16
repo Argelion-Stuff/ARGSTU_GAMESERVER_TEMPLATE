@@ -71,14 +71,22 @@ jobs:
           REPO: ${{ github.repository }}
           TOKEN: ${{ steps.app_token.outputs.token }}
         run: |
-          echo "Adding branch protection rule: ARGSTU Protection Branch"
-          cat <<EOF | gh api -X POST \
-            -H "Authorization: token $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            /repos/$REPO/rulesets \
-            --input -
+          RULESET_NAME="ARGSTU Protection Branch"
+          echo "Adding branch protection rule: $RULESET_NAME"
+
+          # Comprobar si el ruleset ya existe
+          EXISTS=$(gh api -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" /repos/$REPO/rulesets --jq ".rulesets[] | select(.name==\"$RULESET_NAME\") | .name")
+
+          if [ -n "$EXISTS" ]; then
+            echo "✅ Branch protection rule '$RULESET_NAME' already exists, skipping creation."
+          else
+            cat <<EOF | gh api -X POST \
+              -H "Authorization: token $TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              /repos/$REPO/rulesets \
+              --input -
           {
-            "name": "ARGSTU Protection Branch",
+            "name": "$RULESET_NAME",
             "target": "branch",
             "source_type": "Repository",
             "source": "Argelion-Stuff/.github",
@@ -110,7 +118,8 @@ jobs:
             "bypass_actors": []
           }
           EOF
-          echo "✅ Branch protection rule 'ARGSTU Protection Branch' added."
+                echo "✅ Branch protection rule '$RULESET_NAME' added."
+              fi
 
       - name: Summary Report
         run: |
