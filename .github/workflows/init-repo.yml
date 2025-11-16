@@ -50,11 +50,13 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
   branch-protection:
+    name: Add Branch Protection Rule
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # 🔐 Generar token de la GitHub App
       - name: Generate GitHub App Installation Token
         id: app_token
         uses: actions/create-github-app-token@v2
@@ -75,47 +77,51 @@ jobs:
           echo "Adding branch protection rule: $RULESET_NAME"
 
           # Comprobar si el ruleset ya existe
-          if gh api -H "Authorization: token $TOKEN" -H "Accept: application/vnd.github+json" /repos/$REPO/rulesets \
-            --jq ".rulesets[] | select(.name==\"$RULESET_NAME\")" >/dev/null; then
+          EXISTS=$(gh api -H "Authorization: token $TOKEN" \
+                          -H "Accept: application/vnd.github+json" \
+                          /repos/$REPO/rulesets \
+                          --jq ".[] | select(.name==\"$RULESET_NAME\") | .name")
+
+          if [ -n "$EXISTS" ]; then
             echo "✅ Branch protection rule '$RULESET_NAME' already exists, skipping creation."
           else
             cat <<EOF | gh api -X POST \
-            -H "Authorization: token $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            /repos/$REPO/rulesets \
-            --input -
-            {
-              "name": "$RULESET_NAME",
-              "target": "branch",
-              "source_type": "Repository",
-              "source": "Argelion-Stuff/.github",
-              "enforcement": "active",
-              "conditions": {
-                "ref_name": {
-                  "include": ["~DEFAULT_BRANCH"],
-                  "exclude": []
+          -H "Authorization: token $TOKEN" \
+          -H "Accept: application/vnd.github+json" \
+          /repos/$REPO/rulesets \
+          --input -
+          {
+            "name": "$RULESET_NAME",
+            "target": "branch",
+            "source_type": "Repository",
+            "source": "Argelion-Stuff/.github",
+            "enforcement": "active",
+            "conditions": {
+              "ref_name": {
+                "include": ["~DEFAULT_BRANCH"],
+                "exclude": []
+              }
+            },
+            "rules": [
+              { "type": "deletion" },
+              { "type": "non_fast_forward" },
+              { "type": "creation" },
+              {
+                "type": "pull_request",
+                "parameters": {
+                  "required_approving_review_count": 1,
+                  "dismiss_stale_reviews_on_push": true,
+                  "required_reviewers": [],
+                  "require_code_owner_review": true,
+                  "require_last_push_approval": true,
+                  "required_review_thread_resolution": true,
+                  "automatic_copilot_code_review_enabled": true,
+                  "allowed_merge_methods": ["merge","squash","rebase"]
                 }
-              },
-              "rules": [
-                { "type": "deletion" },
-                { "type": "non_fast_forward" },
-                { "type": "creation" },
-                {
-                  "type": "pull_request",
-                  "parameters": {
-                    "required_approving_review_count": 1,
-                    "dismiss_stale_reviews_on_push": true,
-                    "required_reviewers": [],
-                    "require_code_owner_review": true,
-                    "require_last_push_approval": true,
-                    "required_review_thread_resolution": true,
-                    "automatic_copilot_code_review_enabled": true,
-                    "allowed_merge_methods": ["merge","squash","rebase"]
-                  }
-                }
-              ],
-              "bypass_actors": []
-            }
+              }
+            ],
+            "bypass_actors": []
+          }
           EOF
             echo "✅ Branch protection rule '$RULESET_NAME' added."
           fi
@@ -126,7 +132,7 @@ jobs:
             echo "### 🛡️ Branch Protection Summary"
             echo ""
             echo "**Repository:** \`$GITHUB_REPOSITORY\`"
-            echo "- Branch Protection Rule added: \`ARGSTU Protection Branch\`"
+            echo "- Branch Protection Rule: \`ARGSTU Protection Branch\`"
             echo "🔐 Authentication: GitHub App"
             echo "🎉 Branch protection setup complete!"
           } >> $GITHUB_STEP_SUMMARY
