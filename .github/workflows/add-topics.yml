@@ -1,0 +1,34 @@
+name: Add Game Server Topics
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  add-topics:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Add repository topics
+        id: add_topics
+        run: |
+          echo "Adding topics: server, game"
+          gh repo edit "$GITHUB_REPOSITORY" --add-topic server --add-topic game
+
+      - name: Summary Report
+        run: |
+          {
+            echo "### 🏷️ Topics Added Successfully"
+            echo ""
+            echo "**Repository:** \`$GITHUB_REPOSITORY\`"
+            echo ""
+            echo "The following topics were added to this repository:"
+            echo "- \`server\`"
+            echo "- \`game\`"
+            echo ""
+            echo "🎉 Initialization complete!"
+          } >> $GITHUB_STEP_SUMMARY
