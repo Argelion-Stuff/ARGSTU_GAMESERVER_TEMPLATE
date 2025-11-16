@@ -37,15 +37,15 @@ jobs:
           # Obtener topics actuales
           CURRENT_TOPICS=$(gh api /repos/$REPO/topics --jq '.names')
 
-          # Combinar con los nuevos topics y asegurar array JSON válido
-          NEW_TOPICS=$(jq -n --argjson cur "$CURRENT_TOPICS" '{"names": ($cur + ["server","game"] | unique)}')
+          # Combinar con los nuevos topics y crear JSON
+          JSON_PAYLOAD=$(jq -n --argjson cur "$CURRENT_TOPICS" '{"names": ($cur + ["server","game"] | unique)}')
 
-          # PUT nuevos topics
-          gh api \
+          # Usar la API con input desde stdin
+          echo "$JSON_PAYLOAD" | gh api \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
             /repos/$REPO/topics \
-            -f "$NEW_TOPICS"
+            --input -
 
       # 📊 Summary
       - name: Summary Report
