@@ -116,7 +116,7 @@ jobs:
               ],
               "bypass_actors": []
             }
-            EOF
+          EOF
             echo "✅ Branch protection rule '$RULESET_NAME' added."
           fi
 
