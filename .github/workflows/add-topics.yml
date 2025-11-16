@@ -11,24 +11,43 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      # ➤ Generate GitHub App Installation Token
+      # 🔐 Generate GitHub App Installation Token (GitHub official action)
       - name: Generate GitHub App Installation Token
         id: app_token
-        uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@v2
         with:
-          app_id: ${{ secrets.GH_APP_ID }}
-          private_key: ${{ secrets.GH_APP_PRIVATE_KEY }}
+          app-id: ${{ secrets.GH_APP_ID }}
+          private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
+      # ⚙️ Authenticate GH CLI with the GitHub App token
+      - name: Configure GH CLI
+        run: |
+          echo "${{ steps.app_token.outputs.token }}" | gh auth login --with-token
+
+      # 🏷️ Add Topics via GitHub API
       - name: Add repository topics
         id: add_topics
         env:
-          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+          REPO: ${{ github.repository }}
         run: |
           echo "Adding topics: server, game"
-          gh repo edit "$GITHUB_REPOSITORY" --add-topic server --add-topic game
 
+          # GET existing topics
+          CURRENT_TOPICS=$(gh api /repos/$REPO/topics --jq '.names')
+
+          # Merge topics with new ones
+          NEW_TOPICS=$(jq -c 'unique' <<< "$(jq -c --argjson cur "$CURRENT_TOPICS" '$cur + ["server","game"]')")
+
+          # PUT new topics
+          gh api \
+            -X PUT \
+            -H "Accept: application/vnd.github+json" \
+            /repos/$REPO/topics \
+            -f names="$NEW_TOPICS"
+
+      # 📊 Summary
       - name: Summary Report
         run: |
           {
@@ -36,9 +55,10 @@ jobs:
             echo ""
             echo "**Repository:** \`$GITHUB_REPOSITORY\`"
             echo ""
-            echo "The following topics were added to this repository:"
+            echo "The following topics were ensured to exist:"
             echo "- \`server\`"
             echo "- \`game\`"
             echo ""
+            echo "🔐 Authentication method: GitHub App"
             echo "🎉 Initialization complete!"
           } >> $GITHUB_STEP_SUMMARY
