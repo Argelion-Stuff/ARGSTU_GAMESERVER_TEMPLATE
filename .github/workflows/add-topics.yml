@@ -34,18 +34,18 @@ jobs:
         run: |
           echo "Adding topics: server, game"
 
-          # GET existing topics
+          # Obtener topics actuales
           CURRENT_TOPICS=$(gh api /repos/$REPO/topics --jq '.names')
 
-          # Merge topics with new ones
-          NEW_TOPICS=$(jq -c 'unique' <<< "$(jq -c --argjson cur "$CURRENT_TOPICS" '$cur + ["server","game"]')")
+          # Combinar con los nuevos topics y asegurar array JSON válido
+          NEW_TOPICS=$(jq -n --argjson cur "$CURRENT_TOPICS" '{"names": ($cur + ["server","game"] | unique)}')
 
-          # PUT new topics
+          # PUT nuevos topics
           gh api \
             -X PUT \
             -H "Accept: application/vnd.github+json" \
             /repos/$REPO/topics \
-            -f names="$NEW_TOPICS"
+            -f "$NEW_TOPICS"
 
       # 📊 Summary
       - name: Summary Report
