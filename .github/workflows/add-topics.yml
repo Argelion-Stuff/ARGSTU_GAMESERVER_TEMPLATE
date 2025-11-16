@@ -54,22 +54,24 @@ jobs:
         run: |
           echo "Adding branch protection rule: ARGSTU Protection Branch"
 
-          gh api -X POST \
+          cat <<EOF | gh api -X POST \
             -H "Authorization: token $TOKEN" \
             -H "Accept: application/vnd.github+json" \
             /repos/$REPO/rulesets \
-            -f name="ARGSTU Protection Branch" \
-            -f target="branch" \
-            -f source_type="Repository" \
-            -f source="Argelion-Stuff/.github" \
-            -f enforcement="active" \
-            -F conditions='{
+            --input -
+          {
+            "name": "ARGSTU Protection Branch",
+            "target": "branch",
+            "source_type": "Repository",
+            "source": "Argelion-Stuff/.github",
+            "enforcement": "active",
+            "conditions": {
               "ref_name": {
                 "include": ["~DEFAULT_BRANCH"],
                 "exclude": []
               }
-            }' \
-            -F rules='[
+            },
+            "rules": [
               { "type": "deletion" },
               { "type": "non_fast_forward" },
               { "type": "creation" },
@@ -86,8 +88,10 @@ jobs:
                   "allowed_merge_methods": ["merge","squash","rebase"]
                 }
               }
-            ]' \
-            -F bypass_actors='[]'
+            ],
+            "bypass_actors": []
+          }
+          EOF
 
           echo "✅ Branch protection rule 'ARGSTU Protection Branch' added."
 
