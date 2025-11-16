@@ -1,4 +1,5 @@
 name: Add Game Server Topics
+run-name: "Initialize Game Server Repository - ${{ github.repository }}"
 
 on:
   push:
