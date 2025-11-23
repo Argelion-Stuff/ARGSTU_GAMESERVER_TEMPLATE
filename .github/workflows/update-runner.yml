@@ -4,10 +4,15 @@ name: Run Ansible from ZimaBoard
 
 on:
   workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Etiqueta del runner self-hosted a usar (ejemplo: zimaboard1)'
+        required: true
+        default: 'zimaboard1'
 
 jobs:
   run-playbook:
-    runs-on: [self-hosted, zimaboard]
+    runs-on: ${{ github.event.inputs.runner }}
 
     steps:
       - name: Checkout repository
