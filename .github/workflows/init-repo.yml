@@ -58,7 +58,7 @@ jobs:
 
   branch-protection:
     name: Add Branch Protection Rule
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.runner || 'ubuntu-latest' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

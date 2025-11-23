@@ -1,0 +1,49 @@
+# Workflow que se ejecuta en el runner self-hosted con etiqueta "zimaboard"
+# Ejecuta el playbook usando secretos de GitHub para la contraseña SSH y el Vault
+name: Run Ansible from ZimaBoard
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-playbook:
+    runs-on: [self-hosted, zimaboard]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install Ansible
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible
+
+      - name: Create Vault password file (from secret)
+        run: |
+          echo "${{ secrets.VAULT_PASSWORD }}" > .vault_pass
+          chmod 600 .vault_pass
+
+      - name: Run ansible ping (test connectivity)
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+        run: |
+          ansible all \
+            -i ansible_quickstart/inventories/hosts.yaml \
+            -m ping \
+            --vault-password-file .vault_pass \
+            --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
+
+      # - name: Run ansible playbook (update)
+      #   env:
+      #     ANSIBLE_HOST_KEY_CHECKING: 'False'
+      #   run: |
+      #     ansible-playbook \
+      #       -i ansible_quickstart/inventories/hosts.yaml \
+      #       ansible_quickstart/playbooks/update.yaml \
+      #       --vault-password-file .vault_pass \
+      #       --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
