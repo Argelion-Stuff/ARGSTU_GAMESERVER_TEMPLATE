@@ -1,22 +1,44 @@
-# Workflow que se ejecuta en el runner self-hosted con etiqueta "zimaboard"
-# Ejecuta el playbook usando secretos de GitHub para la contraseña SSH y el Vault
+# Workflow para ejecutar Ansible en un runner self-hosted identificado por la etiqueta pasada como input.
 name: Run Ansible from ZimaBoard
 
 on:
   workflow_dispatch:
     inputs:
-      runner:
-        description: 'Etiqueta del runner self-hosted a usar (ejemplo: zimaboard1)'
+      runner_label:
+        description: 'Etiqueta del runner self-hosted a usar (ejemplo: zimaboard)'
         required: true
-        default: 'zimaboard1'
+        default: 'zimaboard'
 
 jobs:
   run-playbook:
-    runs-on: ${{ github.event.inputs.runner }}
+    runs-on: ${{ github.event.inputs.runner_label }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Show workspace and list files for debugging
+        run: |
+          echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+          echo "Current dir: $(pwd)"
+          echo "Top-level files:"
+          ls -la
+          echo "Recursive (limit 3 levels):"
+          find . -maxdepth 3 -mindepth 1 -print
+
+      - name: Show inventory file (if exists) and validate with ansible-inventory
+        run: |
+          INV_PATH="${GITHUB_WORKSPACE}/ansible_quickstart/inventories/hosts.yaml"
+          echo "Checking inventory at: $INV_PATH"
+          if [ -f "$INV_PATH" ]; then
+            echo "Inventory file found. Head of file:"
+            sed -n '1,200p' "$INV_PATH"
+            echo "ansible-inventory --list output:"
+            ansible-inventory -i "$INV_PATH" --list || true
+          else
+            echo "Inventory file NOT FOUND at $INV_PATH"
+            exit 1
+          fi
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -37,18 +59,25 @@ jobs:
         env:
           ANSIBLE_HOST_KEY_CHECKING: 'False'
         run: |
+          INV_PATH="${GITHUB_WORKSPACE}/ansible_quickstart/inventories/hosts.yaml"
           ansible all \
-            -i ansible_quickstart/inventories/hosts.yaml \
+            -i "$INV_PATH" \
             -m ping \
             --vault-password-file .vault_pass \
             --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
 
-      # - name: Run ansible playbook (update)
-      #   env:
-      #     ANSIBLE_HOST_KEY_CHECKING: 'False'
-      #   run: |
-      #     ansible-playbook \
-      #       -i ansible_quickstart/inventories/hosts.yaml \
-      #       ansible_quickstart/playbooks/update.yaml \
-      #       --vault-password-file .vault_pass \
-      #       --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
+      - name: Run ansible playbook (update)
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: 'False'
+        run: |
+          INV_PATH="${GITHUB_WORKSPACE}/ansible_quickstart/inventories/hosts.yaml"
+          ansible-playbook \
+            -i "$INV_PATH" \
+            ansible_quickstart/playbooks/update.yaml \
+            --vault-password-file .vault_pass \
+            --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
+
+      - name: Cleanup vault password file
+        if: always()
+        run: |
+          rm -f .vault_pass
