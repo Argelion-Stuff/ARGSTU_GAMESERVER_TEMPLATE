@@ -28,22 +28,34 @@ jobs:
           app-id: ${{ secrets.GH_APP_ID }}
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
 
-      - name: Configure GH CLI
-        run: |
-          echo "${{ steps.app_token.outputs.token }}" | gh auth login --with-token
-
+      # 🏷️ Add repository topics
       - name: Add repository topics
+        uses: actions/github-script@v7
         env:
-          REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ steps.app_token.outputs.token }}
-        run: |
-          echo "Adding topics: server, game"
-          # Obtener topics actuales
-          CURRENT_TOPICS=$(gh api /repos/$REPO/topics --jq '.names')
-          # Combinar con nuevos topics
-          JSON_PAYLOAD=$(jq -n --argjson cur "$CURRENT_TOPICS" '{"names": ($cur + ["server","game"] | unique)}')
-          # Actualizar topics
-          echo "$JSON_PAYLOAD" | gh api -X PUT -H "Accept: application/vnd.github+json" /repos/$REPO/topics --input -
+          GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
+        with:
+          script: |
+            const repo = process.env.GITHUB_REPOSITORY;
+            const [owner, repoName] = repo.split("/");
+            const newTopics = ["server", "game"];
+
+            // Obtener topics actuales
+            const { data: current } = await github.rest.repos.getAllTopics({
+              owner,
+              repo: repoName
+            });
+
+            // Combinar con los nuevos topics y eliminar duplicados
+            const updatedTopics = [...new Set([...current.names, ...newTopics])];
+
+            // Actualizar topics
+            await github.rest.repos.replaceAllTopics({
+              owner,
+              repo: repoName,
+              names: updatedTopics
+            });
+
+            console.log(`Topics updated for ${repo}: ${updatedTopics.join(", ")}`);
 
       - name: Summary Report
         run: |
