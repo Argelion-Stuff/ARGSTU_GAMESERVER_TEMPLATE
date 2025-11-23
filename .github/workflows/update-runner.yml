@@ -75,7 +75,7 @@ jobs:
             -i "$INV_PATH" \
             ansible_quickstart/playbooks/update.yaml \
             --vault-password-file .vault_pass \
-            --extra-vars "ansible_user=argelion14"
+            --extra-vars "ansible_user=argelion14 ansible_ssh_pass=${{ secrets.SSH_PASSWORD }} ansible_become_pass=${{ secrets.SUDO_PASSWORD }}"
 
       - name: Cleanup vault password file
         if: always()
