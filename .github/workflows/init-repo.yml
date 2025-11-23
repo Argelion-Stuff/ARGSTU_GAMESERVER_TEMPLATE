@@ -6,9 +6,16 @@ on:
     branches:
       - main
 
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner donde ejecutar el workflow"
+        required: true
+        default: "ubuntu-latest"
+
 jobs:
   add-topics:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.runner }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
